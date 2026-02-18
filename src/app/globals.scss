@@ -93,7 +93,7 @@ body {
     transition: transform 0.2s, background-color 0.2s;
 
     &:hover {
-      background-color: darken($primary-color, 10%);
+      background-color: #4f46e5; // darken($primary-color, 10%) 대신 고정값 사용
       transform: translateY(-2px);
     }
   }
