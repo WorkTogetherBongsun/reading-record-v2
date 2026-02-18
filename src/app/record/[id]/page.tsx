@@ -11,7 +11,7 @@ import {
   Timestamp 
 } from 'firebase/firestore';
 import Link from 'next/link';
-import '../globals.scss';
+import '@/app/globals.scss';
 
 interface Record {
   id: string;
