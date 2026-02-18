@@ -23,6 +23,8 @@ interface Note {
 
 export default function Home() {
   const [notes, setNotes] = useState<Note[]>([]);
+  const [isDebug, setIsDebug] = useState(false);
+  const [debugDate, setDebugDate] = useState('');
   const todayId = new Date().toISOString().split('T')[0]; // 오늘 날짜 ID
 
   // 일 단위 기록 목록 구독
@@ -38,17 +40,19 @@ export default function Home() {
     return () => unsubscribe();
   }, []);
 
-  // 오늘 기록 시작하기 (없으면 생성)
-  const handleStartToday = async () => {
-    const todayDoc = doc(db, 'notes', todayId);
+  // 기록 시작하기 (지정된 ID 또는 오늘 ID)
+  const handleStartRecord = async (targetId: string) => {
+    const finalId = targetId || todayId;
+    const [y, m, d] = finalId.split('-');
+    
+    const todayDoc = doc(db, 'notes', finalId);
     await setDoc(todayDoc, {
-      title: `${todayId.split('-')[1]}월 ${todayId.split('-')[2]}일의 기록`,
+      title: `${m}월 ${d}일의 기록`,
       createdAt: serverTimestamp(),
-      id: todayId
+      id: finalId
     }, { merge: true });
     
-    // 생성 후 상세 페이지로 이동 (MPA 방식의 이동)
-    window.location.href = `/record/${todayId}`;
+    window.location.href = `/record/${finalId}`;
   };
 
   const formatDate = (dateStr: string) => {
@@ -58,16 +62,37 @@ export default function Home() {
 
   return (
     <main className="container">
-      <header className="header">
+      <header className="header" onDoubleClick={() => setIsDebug(!isDebug)}>
         <h1>🌙 Night Reading</h1>
         <p>매일 밤, 당신의 마음을 스친 문장들</p>
       </header>
 
       <div className="note-list-view">
+        {isDebug && (
+          <div className="form-card" style={{borderColor: '#ef4444', marginBottom: '24px'}}>
+            <h4 style={{color: '#ef4444', marginTop: 0}}>🛠 Debug Mode</h4>
+            <div style={{display: 'flex', gap: '10px'}}>
+              <input 
+                type="date" 
+                value={debugDate} 
+                onChange={(e) => setDebugDate(e.target.value)}
+                style={{flex: 2, marginBottom: 0}}
+              />
+              <button 
+                className="submit-btn" 
+                style={{flex: 1, backgroundColor: '#ef4444'}}
+                onClick={() => handleStartRecord(debugDate)}
+              >
+                기록 생성
+              </button>
+            </div>
+          </div>
+        )}
+
         <button 
           className="submit-btn" 
           style={{marginBottom: '40px', fontSize: '1.1rem'}}
-          onClick={handleStartToday}
+          onClick={() => handleStartRecord(todayId)}
         >
           ✨ {notes.find(n => n.id === todayId) ? '오늘의 기록 이어가기' : '오늘의 기록 시작하기'}
         </button>
