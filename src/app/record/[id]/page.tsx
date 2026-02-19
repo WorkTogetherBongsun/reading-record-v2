@@ -1,14 +1,16 @@
 'use client';
 
 import { useState, useEffect, use } from 'react';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { 
   collection, 
   addDoc, 
   query, 
   orderBy, 
-  onSnapshot 
+  onSnapshot,
+  where
 } from 'firebase/firestore';
+import { onAuthStateChanged, User } from 'firebase/auth';
 import Link from 'next/link';
 import '@/app/globals.scss';
 
@@ -20,10 +22,12 @@ interface Record {
   category: string;
   tags: string[];
   createdAt: any;
+  userId: string;
 }
 
 export default function RecordDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id: dateId } = use(params);
+  const [user, setUser] = useState<User | null>(null);
   const [records, setRecords] = useState<Record[]>([]);
   const [content, setContent] = useState('');
   const [bookTitle, setBookTitle] = useState('');
@@ -34,8 +38,17 @@ export default function RecordDetail({ params }: { params: Promise<{ id: string 
   const categories = ['생각', '철학', '성장', '기술', '문장', '기타'];
 
   useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
     const q = query(
-      collection(db, `notes/${dateId}/records`), 
+      collection(db, `notes/${user.uid}_${dateId}/records`), 
       orderBy('createdAt', 'asc')
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -46,19 +59,20 @@ export default function RecordDetail({ params }: { params: Promise<{ id: string 
       setRecords(data);
     });
     return () => unsubscribe();
-  }, [dateId]);
+  }, [user, dateId]);
 
   const handleAddRecord = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!content) return;
+    if (!content || !user) return;
     try {
-      await addDoc(collection(db, `notes/${dateId}/records`), {
+      await addDoc(collection(db, `notes/${user.uid}_${dateId}/records`), {
         content,
         bookTitle,
         type,
         category,
         tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag !== ''),
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        userId: user.uid
       });
       setContent('');
       setBookTitle('');
@@ -69,6 +83,15 @@ export default function RecordDetail({ params }: { params: Promise<{ id: string 
   };
 
   const [m, d] = dateId.split('-').slice(1);
+
+  if (!user) {
+    return (
+        <main className="container">
+            <p style={{textAlign: 'center', marginTop: '50px'}}>로그인이 필요합니다.</p>
+            <Link href="/" style={{display: 'block', textAlign: 'center', color: '#6366f1'}}>메인으로 이동</Link>
+        </main>
+    );
+  }
 
   return (
     <main className="container">
