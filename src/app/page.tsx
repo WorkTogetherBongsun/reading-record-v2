@@ -9,14 +9,13 @@ import {
   onSnapshot, 
   doc,
   setDoc,
-  serverTimestamp,
-  Timestamp 
+  serverTimestamp 
 } from 'firebase/firestore';
 import Link from 'next/link';
 import './globals.scss';
 
 interface Note {
-  id: string; // YYYY-MM-DD 형식
+  id: string; // YYYY-MM-DD
   title: string;
   createdAt: any;
 }
@@ -25,9 +24,8 @@ export default function Home() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [isDebug, setIsDebug] = useState(false);
   const [debugDate, setDebugDate] = useState('');
-  const todayId = new Date().toISOString().split('T')[0]; // 오늘 날짜 ID
+  const todayId = new Date().toISOString().split('T')[0];
 
-  // 일 단위 기록 목록 구독
   useEffect(() => {
     const q = query(collection(db, 'notes'), orderBy('id', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -40,14 +38,13 @@ export default function Home() {
     return () => unsubscribe();
   }, []);
 
-  // 기록 시작하기 (지정된 ID 또는 오늘 ID)
   const handleStartRecord = async (targetId: string) => {
     const finalId = targetId || todayId;
     const [y, m, d] = finalId.split('-');
     
     const todayDoc = doc(db, 'notes', finalId);
     await setDoc(todayDoc, {
-      title: `${m}월 ${d}일의 기록`,
+      title: `${m}월 ${d}일의 밤`,
       createdAt: serverTimestamp(),
       id: finalId
     }, { merge: true });
@@ -55,17 +52,45 @@ export default function Home() {
     window.location.href = `/record/${finalId}`;
   };
 
-  const formatDate = (dateStr: string) => {
-    const [y, m, d] = dateStr.split('-');
-    return `${m}월 ${d}일`;
-  };
+  const hasTodayRecord = notes.some(n => n.id === todayId);
 
   return (
     <main className="container">
       <header className="header" onDoubleClick={() => setIsDebug(!isDebug)}>
-        <h1>🌙 Night Reading</h1>
-        <p>매일 밤, 당신의 마음을 스친 문장들</p>
+        <h1 style={{fontSize: '3rem'}}>🌙</h1>
+        <h2 style={{fontSize: '2rem', color: 'white', marginBottom: '8px'}}>Night Reading</h2>
+        <p>당신의 밤이 기록으로 남는 공간</p>
       </header>
+
+      <div className="dashboard-summary" style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: '16px',
+        marginBottom: '40px'
+      }}>
+        <div className="stat-card" style={{
+          background: '#1e1e1e',
+          padding: '20px',
+          borderRadius: '20px',
+          border: '1px solid #333',
+          textAlign: 'center'
+        }}>
+          <span style={{color: '#a0a0a0', fontSize: '0.8rem'}}>총 기록 일수</span>
+          <p style={{fontSize: '1.8rem', fontWeight: 'bold', margin: '8px 0', color: '#6366f1'}}>{notes.length}일</p>
+        </div>
+        <div className="stat-card" style={{
+          background: '#1e1e1e',
+          padding: '20px',
+          borderRadius: '20px',
+          border: '1px solid #333',
+          textAlign: 'center'
+        }}>
+          <span style={{color: '#a0a0a0', fontSize: '0.8rem'}}>이번 달 기록</span>
+          <p style={{fontSize: '1.8rem', fontWeight: 'bold', margin: '8px 0', color: '#fbbf24'}}>
+            {notes.filter(n => n.id.startsWith(todayId.slice(0, 7))).length}회
+          </p>
+        </div>
+      </div>
 
       <div className="note-list-view">
         {isDebug && (
@@ -83,7 +108,7 @@ export default function Home() {
                 style={{flex: 1, backgroundColor: '#ef4444'}}
                 onClick={() => handleStartRecord(debugDate)}
               >
-                기록 생성
+                생성
               </button>
             </div>
           </div>
@@ -91,29 +116,40 @@ export default function Home() {
 
         <button 
           className="submit-btn" 
-          style={{marginBottom: '40px', fontSize: '1.1rem'}}
+          style={{
+            marginBottom: '48px', 
+            fontSize: '1.2rem', 
+            padding: '20px',
+            boxShadow: hasTodayRecord ? 'none' : '0 0 20px rgba(99, 102, 241, 0.4)'
+          }}
           onClick={() => handleStartRecord(todayId)}
         >
-          ✨ {notes.find(n => n.id === todayId) ? '오늘의 기록 이어가기' : '오늘의 기록 시작하기'}
+          {hasTodayRecord ? '🌙 오늘의 기록 이어가기' : '✨ 오늘의 기록 시작하기'}
         </button>
 
-        <h3 style={{color: '#a0a0a0', marginBottom: '20px', fontSize: '0.9rem'}}>지나온 밤들</h3>
+        <h3 style={{color: '#a0a0a0', marginBottom: '20px', fontSize: '1rem', borderBottom: '1px solid #333', paddingBottom: '10px'}}>
+          지나온 밤들의 기록
+        </h3>
+        
         <div className="record-list">
           {notes.map((note) => (
             <Link href={`/record/${note.id}`} key={note.id} style={{textDecoration: 'none'}}>
-              <div className="record-item">
-                <div className="footer">
-                  <span style={{fontSize: '0.8rem', color: '#6366f1'}}>{formatDate(note.id)}</span>
+              <div className="record-item" style={{
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                padding: '24px'
+              }}>
+                <div>
+                  <span style={{fontSize: '0.8rem', color: '#6366f1', display: 'block', marginBottom: '4px'}}>
+                    {note.id.split('-')[1]}월 {note.id.split('-')[2]}일
+                  </span>
+                  <p className="content" style={{fontSize: '1.2rem', margin: 0, color: 'white'}}>{note.title}</p>
                 </div>
-                <p className="content" style={{fontSize: '1.4rem', margin: '8px 0'}}>{note.title}</p>
+                <span style={{color: '#333'}}>→</span>
               </div>
             </Link>
           ))}
-          {notes.length === 0 && (
-            <p style={{textAlign: 'center', color: '#666', marginTop: '40px'}}>
-              아직 기록이 없습니다. 오늘부터 시작해보세요.
-            </p>
-          )}
         </div>
       </div>
     </main>
