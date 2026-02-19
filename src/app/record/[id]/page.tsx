@@ -7,8 +7,7 @@ import {
   addDoc, 
   query, 
   orderBy, 
-  onSnapshot,
-  Timestamp 
+  onSnapshot 
 } from 'firebase/firestore';
 import Link from 'next/link';
 import '@/app/globals.scss';
@@ -18,6 +17,8 @@ interface Record {
   content: string;
   bookTitle?: string;
   type: 'insight' | 'quote';
+  category: string;
+  tags: string[];
   createdAt: any;
 }
 
@@ -27,6 +28,10 @@ export default function RecordDetail({ params }: { params: Promise<{ id: string 
   const [content, setContent] = useState('');
   const [bookTitle, setBookTitle] = useState('');
   const [type, setType] = useState<'insight' | 'quote'>('insight');
+  const [category, setCategory] = useState('생각');
+  const [tags, setTags] = useState('');
+
+  const categories = ['생각', '철학', '성장', '기술', '문장', '기타'];
 
   useEffect(() => {
     const q = query(
@@ -51,10 +56,13 @@ export default function RecordDetail({ params }: { params: Promise<{ id: string 
         content,
         bookTitle,
         type,
-        createdAt: new Date().toISOString() // serverTimestamp 대신 빠른 피드백을 위해 ISO 사용 가능
+        category,
+        tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag !== ''),
+        createdAt: new Date().toISOString()
       });
       setContent('');
       setBookTitle('');
+      setTags('');
     } catch (err) {
       console.error(err);
     }
@@ -81,6 +89,29 @@ export default function RecordDetail({ params }: { params: Promise<{ id: string 
             <button type="button" onClick={() => setType('insight')} className={type === 'insight' ? 'active' : ''}>💡 깨달음</button>
             <button type="button" onClick={() => setType('quote')} className={type === 'quote' ? 'active' : ''}>📖 문장</button>
           </div>
+
+          <div className="category-selector" style={{display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px'}}>
+            {categories.map(cat => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setCategory(cat)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '20px',
+                  border: '1px solid #333',
+                  background: category === cat ? '#6366f1' : '#1e1e1e',
+                  color: category === cat ? 'white' : '#a0a0a0',
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
           <textarea
             className="w-full bg-[#252525] p-4 rounded-xl mb-4 text-white"
             placeholder={type === 'insight' ? "무엇을 깨달았나요?" : "어떤 문장이 남았나요?"}
@@ -95,15 +126,34 @@ export default function RecordDetail({ params }: { params: Promise<{ id: string 
             value={bookTitle}
             onChange={(e) => setBookTitle(e.target.value)}
           />
+          <input
+            type="text"
+            className="w-full bg-[#252525] p-4 rounded-xl mb-4 text-white"
+            placeholder="태그 (쉼표로 구분, 예: 행복, 아침)"
+            value={tags}
+            onChange={(e) => setTags(e.target.value)}
+          />
           <button type="submit" className="submit-btn">문장 추가하기</button>
         </form>
 
         <div className="record-list">
           {records.map((r) => (
             <div key={r.id} className="record-item">
-              <span className={`badge ${r.type}`}>{r.type === 'insight' ? 'INSIGHT' : 'QUOTE'}</span>
+              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px'}}>
+                <span className={`badge ${r.type}`}>{r.type === 'insight' ? 'INSIGHT' : 'QUOTE'}</span>
+                <span style={{fontSize: '0.75rem', color: '#6366f1', fontWeight: 'bold'}}>#{r.category}</span>
+              </div>
               <p className="content">{r.content}</p>
-              {r.bookTitle && <div className="footer"><span className="book-title">— {r.bookTitle}</span></div>}
+              <div className="footer" style={{display: 'block'}}>
+                {r.bookTitle && <span className="book-title" style={{display: 'block', marginBottom: '8px'}}>— {r.bookTitle}</span>}
+                <div className="tags" style={{display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
+                  {r.tags?.map((tag: string) => (
+                    <span key={tag} style={{fontSize: '0.75rem', color: '#666', background: '#252525', padding: '2px 8px', borderRadius: '4px'}}>
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
             </div>
           ))}
         </div>

@@ -9,16 +9,17 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "firebase": "^11.0.0",
     "next": "latest",
+    "playwright": "^1.58.2",
     "react": "latest",
     "react-dom": "latest",
-    "firebase": "^11.0.0",
     "sass": "^1.70.0"
   },
   "devDependencies": {
-    "typescript": "latest",
     "@types/node": "latest",
     "@types/react": "latest",
-    "@types/react-dom": "latest"
+    "@types/react-dom": "latest",
+    "typescript": "latest"
   }
 }
