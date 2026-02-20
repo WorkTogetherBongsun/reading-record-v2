@@ -29,27 +29,31 @@ interface Note {
 }
 
 export default function Home() {
-  const [user, setUser] = useState<User | null>(null);
+  // --- 구글 로그인 임시 주석 처리 (나중에 다시 활성화 가능) ---
+  // const [user, setUser] = useState<User | null>(null);
+  // 인증 대신 고정된 ID를 사용하여 사용자별 기록 기능 유지
+  const [user, setUser] = useState<any>({ uid: 'default_user', displayName: '기록자' }); 
+  
   const [notes, setNotes] = useState<Note[]>([]);
   const [isDebug, setIsDebug] = useState(false);
   const [debugDate, setDebugDate] = useState('');
   const todayId = new Date().toISOString().split('T')[0];
 
-  // 1. 인증 상태 감시
+  /* 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
     });
     return () => unsubscribe();
   }, []);
+  */
+  // -------------------------------------------------------
 
-  // 2. 사용자별 데이터 구독
   useEffect(() => {
     if (!user) {
       setNotes([]);
       return;
     }
-    // 사용자의 uid가 일치하는 데이터만 가져옴
     const q = query(
       collection(db, 'notes'), 
       where('userId', '==', user.uid),
@@ -66,29 +70,24 @@ export default function Home() {
   }, [user]);
 
   const handleLogin = async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-    } catch (err) {
-      console.error(err);
-    }
+    alert('현재 로그인이 주석 처리되어 있습니다.');
   };
 
-  const handleLogout = () => signOut(auth);
+  const handleLogout = () => {
+    alert('현재 로그아웃이 비활성화 상태입니다.');
+  };
 
   const handleStartRecord = async (targetId: string) => {
     if (!user) return;
     const finalId = targetId || todayId;
     const [y, m, d] = finalId.split('-');
     
-    // 문서 ID에 유저 UID를 조합하여 고유성 확보 (또는 문서 내 userId 필드로 구분)
-    // 여기서는 문서 내 userId 필드를 사용하는 방식을 유지하고 ID는 날짜로 유지
     const todayDoc = doc(db, 'notes', `${user.uid}_${finalId}`);
     await setDoc(todayDoc, {
       title: `${m}월 ${d}일의 밤`,
       createdAt: serverTimestamp(),
       id: finalId,
-      userId: user.uid // 유저 ID 저장
+      userId: user.uid
     }, { merge: true });
     
     window.location.href = `/record/${finalId}`;
@@ -96,18 +95,7 @@ export default function Home() {
 
   const hasTodayRecord = notes.some(n => n.id === todayId);
 
-  if (!user) {
-    return (
-      <main className="container" style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '80vh'}}>
-        <h1 style={{fontSize: '4rem', marginBottom: '20px'}}>🌙</h1>
-        <h2 style={{color: 'white', marginBottom: '40px'}}>Night Reading</h2>
-        <button onClick={handleLogin} className="submit-btn" style={{width: 'auto', padding: '16px 32px'}}>
-          Google 계정으로 시작하기
-        </button>
-      </main>
-    );
-  }
-
+  // user 체크 해제하여 바로 메인 보이게 수정
   return (
     <main className="container">
       <header className="header" onDoubleClick={() => setIsDebug(!isDebug)}>
