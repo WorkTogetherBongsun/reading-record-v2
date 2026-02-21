@@ -3,13 +3,13 @@
 import { useState, useEffect, use } from 'react';
 import { db, auth } from '@/lib/firebase';
 import { 
-  collection, 
-  addDoc, 
-  query, 
-  orderBy, 
-  onSnapshot,
-  where
-} from 'firebase/firestore';
+  ref, 
+  onValue, 
+  push, 
+  set,
+  query,
+  orderByChild 
+} from 'firebase/database';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import Link from 'next/link';
 import '@/app/globals.scss';
@@ -27,21 +27,7 @@ interface Record {
 
 export default function RecordDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id: dateId } = use(params);
-  
-  // --- 구글 로그인 임시 주석 처리 ---
-  // const [user, setUser] = useState<User | null>(null);
   const [user, setUser] = useState<any>({ uid: 'default_user', displayName: '기록자' }); 
-
-  /*
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-    });
-    return () => unsubscribe();
-  }, []);
-  */
-  // -----------------------------
-
   const [records, setRecords] = useState<Record[]>([]);
   const [content, setContent] = useState('');
   const [bookTitle, setBookTitle] = useState('');
@@ -54,17 +40,22 @@ export default function RecordDetail({ params }: { params: Promise<{ id: string 
   useEffect(() => {
     if (!user) return;
 
-    const q = query(
-      collection(db, `notes/${user.uid}_${dateId}/records`), 
-      orderBy('createdAt', 'asc')
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Record[];
-      setRecords(data);
+    // Realtime Database 경로: notes/{userId}_{dateId}/records
+    const recordsRef = ref(db, `notes/${user.uid}_${dateId}/records`);
+    
+    const unsubscribe = onValue(recordsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const recordsList = Object.keys(data).map(key => ({
+          id: key,
+          ...data[key]
+        }));
+        setRecords(recordsList);
+      } else {
+        setRecords([]);
+      }
     });
+
     return () => unsubscribe();
   }, [user, dateId]);
 
@@ -72,7 +63,10 @@ export default function RecordDetail({ params }: { params: Promise<{ id: string 
     e.preventDefault();
     if (!content || !user) return;
     try {
-      await addDoc(collection(db, `notes/${user.uid}_${dateId}/records`), {
+      const recordsRef = ref(db, `notes/${user.uid}_${dateId}/records`);
+      const newRecordRef = push(recordsRef);
+      
+      await set(newRecordRef, {
         content,
         bookTitle,
         type,
@@ -81,6 +75,7 @@ export default function RecordDetail({ params }: { params: Promise<{ id: string 
         createdAt: new Date().toISOString(),
         userId: user.uid
       });
+
       setContent('');
       setBookTitle('');
       setTags('');

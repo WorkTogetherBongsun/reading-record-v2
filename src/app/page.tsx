@@ -3,15 +3,15 @@
 import { useState, useEffect } from 'react';
 import { db, auth } from '@/lib/firebase';
 import { 
-  collection, 
+  ref, 
+  onValue, 
+  set, 
+  push, 
   query, 
-  orderBy, 
-  onSnapshot, 
-  doc,
-  setDoc,
-  serverTimestamp,
-  where
-} from 'firebase/firestore';
+  orderByChild,
+  equalTo,
+  serverTimestamp 
+} from 'firebase/database';
 import { 
   GoogleAuthProvider, 
   signInWithPopup, 
@@ -26,46 +26,39 @@ interface Note {
   id: string;
   title: string;
   createdAt: any;
+  userId: string;
 }
 
 export default function Home() {
-  // --- 구글 로그인 임시 주석 처리 (나중에 다시 활성화 가능) ---
-  // const [user, setUser] = useState<User | null>(null);
-  // 인증 대신 고정된 ID를 사용하여 사용자별 기록 기능 유지
   const [user, setUser] = useState<any>({ uid: 'default_user', displayName: '기록자' }); 
-  
   const [notes, setNotes] = useState<Note[]>([]);
   const [isDebug, setIsDebug] = useState(false);
   const [debugDate, setDebugDate] = useState('');
   const todayId = new Date().toISOString().split('T')[0];
-
-  /* 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-    });
-    return () => unsubscribe();
-  }, []);
-  */
-  // -------------------------------------------------------
 
   useEffect(() => {
     if (!user) {
       setNotes([]);
       return;
     }
-    const q = query(
-      collection(db, 'notes'), 
-      where('userId', '==', user.uid),
-      orderBy('id', 'desc')
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Note[];
-      setNotes(data);
+
+    // Realtime Database에서 userId가 일치하는 notes 필터링
+    const notesRef = ref(db, 'notes');
+    const userNotesQuery = query(notesRef, orderByChild('userId'), equalTo(user.uid));
+
+    const unsubscribe = onValue(userNotesQuery, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const notesList = Object.keys(data).map(key => ({
+          ...data[key],
+          dbKey: key // RTDB의 고유 키 (필요시 사용)
+        })).sort((a, b) => b.id.localeCompare(a.id)); // 날짜 역순 정렬
+        setNotes(notesList);
+      } else {
+        setNotes([]);
+      }
     });
+
     return () => unsubscribe();
   }, [user]);
 
@@ -82,20 +75,20 @@ export default function Home() {
     const finalId = targetId || todayId;
     const [y, m, d] = finalId.split('-');
     
-    const todayDoc = doc(db, 'notes', `${user.uid}_${finalId}`);
-    await setDoc(todayDoc, {
+    // RTDB는 경로 기반이므로 user.uid와 finalId를 조합한 경로 사용
+    const notePath = `notes/${user.uid}_${finalId}`;
+    await set(ref(db, notePath), {
       title: `${m}월 ${d}일의 밤`,
       createdAt: serverTimestamp(),
       id: finalId,
       userId: user.uid
-    }, { merge: true });
+    });
     
     window.location.href = `/record/${finalId}`;
   };
 
   const hasTodayRecord = notes.some(n => n.id === todayId);
 
-  // user 체크 해제하여 바로 메인 보이게 수정
   return (
     <main className="container">
       <header className="header" onDoubleClick={() => setIsDebug(!isDebug)}>
