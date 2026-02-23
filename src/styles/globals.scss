@@ -1,0 +1,57 @@
+@use 'root' as *;
+
+body {
+  background-color: $bg-black;
+  color: $text-bright;
+  margin: 0;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.container-layout {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+.header-section {
+  text-align: center;
+  margin-bottom: 48px;
+
+  h1 { margin-bottom: 8px; }
+  p { color: $text-muted; }
+}
+
+.card-base {
+  background-color: $card-dark;
+  padding: 32px;
+  border-radius: 20px;
+  border: 1px solid $border-soft;
+  box-shadow: $shadow-lg;
+}
+
+.button-primary {
+  width: 100%;
+  padding: 16px;
+  background-color: $primary-indigo;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: $transition-base;
+
+  &:hover {
+    background-color: lighten($primary-indigo, 10%);
+    transform: translateY(-2px);
+  }
+}
+
+.badge-label {
+  display: inline-block;
+  font-size: 0.7rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  
+  &.insight { background-color: rgba($accent-amber, 0.1); color: $accent-amber; }
+  &.quote { background-color: rgba($primary-indigo, 0.1); color: $primary-indigo; }
+}
