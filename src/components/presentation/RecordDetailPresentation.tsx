@@ -2,6 +2,8 @@
 
 import { RecordItem } from '@/types/note';
 import Link from 'next/link';
+import { useModal } from '@/components/modal/context/ModalContext';
+import TagInputModal from './TagInputModal';
 
 interface RecordDetailPresentationProps {
   dateId: string;
@@ -37,6 +39,18 @@ export default function RecordDetailPresentation({
   onSubmit
 }: RecordDetailPresentationProps) {
   const [m, d] = dateId.split('-').slice(1);
+  const { openModal } = useModal();
+
+  const handleOpenTagModal = () => {
+    openModal({
+      key: 'tag-input',
+      Component: TagInputModal,
+      props: {
+        initialTags: tags,
+        onConfirm: (newTags: string) => onTagsChange(newTags),
+      }
+    });
+  };
 
   return (
     <main className="container-layout">
@@ -48,7 +62,7 @@ export default function RecordDetailPresentation({
       </header>
 
       <div className="note-detail-view">
-        <Link href="/" style={{display: 'inline-block', marginBottom: '24px', color: '#a0a0a0', textDecoration: 'none'}}>
+        <Link href="/" className="back-btn" style={{display: 'inline-block', marginBottom: '24px', color: '#a0a0a0', textDecoration: 'none'}}>
           ← 목록으로 돌아가기
         </Link>
         
@@ -68,7 +82,7 @@ export default function RecordDetailPresentation({
             >📖 문장</button>
           </div>
 
-          <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px'}}>
+          <div className="category-selector" style={{display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px'}}>
             {categories.map(cat => (
               <button
                 key={cat}
@@ -102,12 +116,24 @@ export default function RecordDetailPresentation({
             value={bookTitle}
             onChange={(e) => onBookTitleChange(e.target.value)}
           />
-          <input
-            style={{width: '100%', background: '#252525', border: '1px solid #333', borderRadius: '12px', padding: '16px', color: 'white', marginBottom: '24px'}}
-            placeholder="태그 (쉼표로 구분, 예: 행복, 아침)"
-            value={tags}
-            onChange={(e) => onTagsChange(e.target.value)}
-          />
+          
+          <div 
+            onClick={handleOpenTagModal}
+            style={{
+              width: '100%', 
+              background: '#252525', 
+              border: '1px solid #333', 
+              borderRadius: '12px', 
+              padding: '16px', 
+              color: tags ? 'white' : '#666', 
+              marginBottom: '24px',
+              cursor: 'pointer',
+              fontSize: '0.9rem'
+            }}
+          >
+            {tags ? `태그: ${tags}` : '태그 입력하기 (클릭)'}
+          </div>
+          
           <button type="submit" className="button-primary">문장 추가하기</button>
         </form>
 
