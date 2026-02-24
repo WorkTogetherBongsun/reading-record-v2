@@ -31,9 +31,16 @@ export function ModalProvider({ children }: { children: ReactNode }) {
       {children}
       {/* 여기서 모달 렌더링 시스템을 연결할 예정입니다 */}
       <div id="modal-root">
-        {modals.map((modal) => (
-          <ModalRenderer key={modal.key} {...modal} onClose={() => closeModal(modal.key)} />
-        ))}
+        {modals.map((modal) => {
+          const { key, ...modalProps } = modal;
+          return (
+            <ModalRenderer 
+              key={key} 
+              {...modalProps} 
+              onClose={() => closeModal(key)} 
+            />
+          );
+        })}
       </div>
     </ModalContext.Provider>
   );
