@@ -4,6 +4,8 @@ import { RecordItem } from '@/types/note';
 import Link from 'next/link';
 import { useModal } from '@/components/modal/context/ModalContext';
 import TagInputModal from './TagInputModal';
+import { useForm } from 'react-hook-form';
+import { useEffect } from 'react';
 
 interface RecordDetailPresentationProps {
   dateId: string;
@@ -19,20 +21,24 @@ interface RecordDetailPresentationProps {
   onTypeChange: (val: 'insight' | 'quote') => void;
   onCategoryChange: (val: string) => void;
   onTagsChange: (val: string) => void;
-  onSubmit: (e: React.FormEvent) => void;
+  onSubmit: (data: RecordFormData) => void;
+}
+
+export interface RecordFormData {
+  content: string;
+  bookTitle: string;
+  type: 'insight' | 'quote';
+  category: string;
+  tags: string;
 }
 
 export default function RecordDetailPresentation({
   dateId,
   records,
-  content,
-  bookTitle,
   type,
   category,
   tags,
   categories,
-  onContentChange,
-  onBookTitleChange,
   onTypeChange,
   onCategoryChange,
   onTagsChange,
@@ -41,13 +47,52 @@ export default function RecordDetailPresentation({
   const [m, d] = dateId.split('-').slice(1);
   const { openModal } = useModal();
 
+  // react-hook-form 설정
+  const { register, handleSubmit, reset, setValue, watch } = useForm<RecordFormData>({
+    defaultValues: {
+      content: '',
+      bookTitle: '',
+      type: type,
+      category: category,
+      tags: tags
+    }
+  });
+
+  // 외부 상태(type, category, tags)가 변경될 때 form 값 업데이트
+  useEffect(() => {
+    setValue('type', type);
+  }, [type, setValue]);
+
+  useEffect(() => {
+    setValue('category', category);
+  }, [category, setValue]);
+
+  useEffect(() => {
+    setValue('tags', tags);
+  }, [tags, setValue]);
+
+  const onInternalSubmit = (data: RecordFormData) => {
+    onSubmit(data);
+    reset({
+      content: '',
+      bookTitle: '',
+      type: type,
+      category: category,
+      tags: ''
+    });
+    onTagsChange(''); // 태그 상태 초기화
+  };
+
   const handleOpenTagModal = () => {
     openModal({
       key: 'tag-input',
       Component: TagInputModal,
       props: {
         initialTags: tags,
-        onConfirm: (newTags: string) => onTagsChange(newTags),
+        onConfirm: (newTags: string) => {
+          onTagsChange(newTags);
+          setValue('tags', newTags);
+        },
       }
     });
   };
@@ -66,7 +111,7 @@ export default function RecordDetailPresentation({
           ← 목록으로 돌아가기
         </Link>
         
-        <form onSubmit={onSubmit} className="card-base" style={{marginBottom: '40px'}}>
+        <form onSubmit={handleSubmit(onInternalSubmit)} className="card-base" style={{marginBottom: '40px'}}>
           <div style={{display: 'flex', gap: '12px', marginBottom: '24px'}}>
             <button 
               type="button" 
@@ -82,7 +127,7 @@ export default function RecordDetailPresentation({
             >📖 문장</button>
           </div>
 
-          <div className="category-selector" style={{display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px'}}>
+          <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px'}}>
             {categories.map(cat => (
               <button
                 key={cat}
@@ -104,17 +149,15 @@ export default function RecordDetailPresentation({
           </div>
 
           <textarea
+            {...register('content', { required: true })}
             style={{width: '100%', background: '#252525', border: '1px solid #333', borderRadius: '12px', padding: '16px', color: 'white', marginBottom: '16px'}}
             placeholder={type === 'insight' ? "무엇을 깨달았나요?" : "어떤 문장이 남았나요?"}
             rows={3}
-            value={content}
-            onChange={(e) => onContentChange(e.target.value)}
           />
           <input
+            {...register('bookTitle')}
             style={{width: '100%', background: '#252525', border: '1px solid #333', borderRadius: '12px', padding: '16px', color: 'white', marginBottom: '16px'}}
             placeholder="책 제목 (선택)"
-            value={bookTitle}
-            onChange={(e) => onBookTitleChange(e.target.value)}
           />
           
           <div 
