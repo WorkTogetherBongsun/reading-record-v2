@@ -1,21 +1,23 @@
-// Colors
-$bg-black: #121212;
-$card-dark: #1e1e1e;
-$input-dark: #252525;
-$primary-indigo: #6366f1;
-$accent-amber: #fbbf24;
-$text-bright: #eeeeee;
-$text-muted: #a0a0a0;
-$border-soft: #333333;
-$error-red: #ef4444;
+// Colors - Refined & Minimal
+$bg-black: #0f0f0f;
+$card-dark: #1a1a1a;
+$input-dark: #1e1e1e;
+$primary-indigo: #4f46e5;
+$accent-amber: #d97706;
+$text-bright: #f3f4f6;
+$text-muted: #9ca3af;
+$border-thin: #262626;
+
+// Typography
+$font-serif: 'Noto Serif KR', serif;
+$font-sans: 'Inter', 'Noto Sans KR', sans-serif;
+
+// Spacing & Borders
+$radius-sm: 8px;
+$radius-md: 12px;
+$radius-lg: 16px;
 
 // Shadows
-$shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.3);
-$shadow-indigo: 0 0 20px rgba(99, 102, 241, 0.4);
-
-// Transitions
-$transition-base: all 0.2s ease;
-
-// Breakpoints
-$tablet: 768px;
-$desktop: 1024px;
+$shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+$shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+$transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
