@@ -12,6 +12,7 @@ export interface RecordItem {
   type: 'insight' | 'quote';
   category: string;
   tags: string[];
+  imageUrl?: string; // 이미지 URL 추가
   createdAt: any;
   userId: string;
 }
@@ -20,8 +21,9 @@ export interface Book {
   id: string;
   title: string;
   author: string;
-  content: string[]; // 묶인 문장들의 리스트
-  highlights: Record<string, boolean>; // 뷰어에서 하이라이트한 문장 인덱스
+  content: string[]; 
+  images?: string[]; // 책에 포함된 이미지들
+  highlights: Record<string, boolean>; 
   createdAt: any;
   userId: string;
 }
