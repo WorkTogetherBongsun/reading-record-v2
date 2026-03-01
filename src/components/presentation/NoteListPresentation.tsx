@@ -2,6 +2,7 @@
 
 import { Note } from '@/types/note';
 import Link from 'next/link';
+import { useState } from 'react';
 
 interface NoteListPresentationProps {
   notes: Note[];
@@ -14,6 +15,8 @@ interface NoteListPresentationProps {
   onDebugDateChange: (date: string) => void;
   userDisplayName: string;
   onLogout: () => void;
+  geminiKey: string;
+  onSaveApiKey: (key: string) => void;
 }
 
 export default function NoteListPresentation({
@@ -26,10 +29,15 @@ export default function NoteListPresentation({
   onToggleDebug,
   onDebugDateChange,
   userDisplayName,
-  onLogout
+  onLogout,
+  geminiKey,
+  onSaveApiKey
 }: NoteListPresentationProps) {
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [tempKey, setTempKey] = useState(geminiKey);
+
   return (
-    <main className="container-layout">
+    <main className="container-layout" style={{ paddingBottom: '120px' }}>
       {/* Navigation Bar */}
       <div className="nav-bar">
         <div style={{fontWeight: 'bold', fontSize: '1.2rem'}}>Book Maker <span style={{fontSize: '0.8rem', color: '#6366f1'}}>Beta</span></div>
@@ -38,12 +46,40 @@ export default function NoteListPresentation({
           <Link href="/write">책 쓰기</Link>
           <Link href="/books">서재</Link>
         </div>
+        <div 
+          onClick={() => setIsProfileOpen(!isProfileOpen)}
+          style={{ cursor: 'pointer', width: '32px', height: '32px', borderRadius: '50%', background: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem' }}
+        >
+          👤
+        </div>
       </div>
 
-      <header className="header-section" onDoubleClick={onToggleDebug} style={{marginTop: '40px'}}>
-        <div style={{display: 'flex', justifyContent: 'flex-end', marginBottom: '20px'}}>
-            <button onClick={onLogout} style={{background: 'none', border: '1px solid #333', color: '#666', padding: '4px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem'}}>로그아웃</button>
+      {/* Profile Sidebar/Overlay */}
+      {isProfileOpen && (
+        <div className="card-base" style={{ position: 'fixed', top: '70px', right: '24px', width: '300px', zIndex: 1000, boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }}>
+          <h4 style={{ margin: '0 0 16px 0' }}>설정</h4>
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ fontSize: '0.8rem', color: '#888', display: 'block', marginBottom: '8px' }}>Gemini API Key</label>
+            <input 
+              type="password" 
+              value={tempKey}
+              onChange={(e) => setTempKey(e.target.value)}
+              placeholder="AI 기능을 위한 키를 입력하세요"
+              style={{ width: '100%', background: '#121212', border: '1px solid #333', color: 'white', padding: '10px', borderRadius: '8px', outline: 'none' }}
+            />
+            <button 
+              onClick={() => onSaveApiKey(tempKey)}
+              className="button-primary" 
+              style={{ marginTop: '12px', padding: '8px', width: '100%', fontSize: '0.8rem' }}
+            >
+              저장하기
+            </button>
+          </div>
+          <button onClick={onLogout} style={{ width: '100%', background: 'none', border: '1px solid #333', color: '#ef4444', padding: '8px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem' }}>로그아웃</button>
         </div>
+      )}
+
+      <header className="header-section" onDoubleClick={onToggleDebug} style={{marginTop: '40px'}}>
         <h1 style={{fontSize: '3.5rem', marginBottom: '16px'}}>🌙</h1>
         <h2 style={{fontSize: '2.5rem', color: 'white', marginBottom: '8px', fontWeight: 'bold'}}>Night Reading</h2>
         <p style={{fontSize: '1.1rem', color: '#888'}}>{userDisplayName}님의 사유가 기록되는 밤입니다</p>
@@ -79,7 +115,7 @@ export default function NoteListPresentation({
                 style={{flex: 1, backgroundColor: '#ef4444'}}
                 onClick={() => onStartRecord(debugDate)}
               >
-                기록지 생성
+                생성
               </button>
             </div>
           </div>
@@ -102,11 +138,6 @@ export default function NoteListPresentation({
           {hasTodayRecord ? '🌙 오늘의 밤 기록 이어가기' : '✨ 새로운 밤의 기록 시작하기'}
         </button>
 
-        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid #262626', paddingBottom: '16px'}}>
-            <h3 style={{color: '#eee', margin: 0, fontSize: '1.2rem', fontWeight: '600'}}>나의 기록 보관함</h3>
-            <span style={{fontSize: '0.85rem', color: '#555'}}>{notes.length}개의 기록</span>
-        </div>
-
         <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
           {notes.map((note) => (
             <Link href={`/record/${note.id}`} key={note.id} style={{textDecoration: 'none'}}>
@@ -122,6 +153,20 @@ export default function NoteListPresentation({
             </Link>
           ))}
         </div>
+      </div>
+
+      {/* Floating Action Buttons for quick navigation */}
+      <div style={{ position: 'fixed', bottom: '30px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '12px', zIndex: 100 }}>
+        <Link href="/write" style={{ textDecoration: 'none' }}>
+          <button className="button-primary" style={{ padding: '12px 24px', borderRadius: '30px', background: '#1e1e1e', border: '1px solid #4f46e5', color: '#4f46e5' }}>
+            ✍️ 책 쓰기
+          </button>
+        </Link>
+        <Link href="/books" style={{ textDecoration: 'none' }}>
+          <button className="button-primary" style={{ padding: '12px 24px', borderRadius: '30px', background: '#1e1e1e', border: '1px solid #fbbf24', color: '#fbbf24' }}>
+            📚 서재 보기
+          </button>
+        </Link>
       </div>
     </main>
   );

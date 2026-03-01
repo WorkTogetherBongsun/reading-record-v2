@@ -19,7 +19,21 @@ export default function NoteListContainer() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [isDebug, setIsDebug] = useState(false);
   const [debugDate, setDebugDate] = useState('');
+  const [geminiKey, setGeminiKey] = useState('');
   const todayId = new Date().toISOString().split('T')[0];
+
+  useEffect(() => {
+    // 로컬 스토리지에서 API 키 불러오기
+    const savedKey = localStorage.getItem('gemini_api_key') || '';
+    setGeminiKey(savedKey);
+  }, []);
+
+  const handleSaveApiKey = (key: string) => {
+    localStorage.setItem('gemini_api_key', key);
+    setGeminiKey(key);
+    alert('API 키가 브라우저에 안전하게 저장되었습니다. 이제 AI 기능을 사용할 수 있습니다! 🐶');
+    window.location.reload(); // 키 적용을 위해 새로고침
+  };
 
   useEffect(() => {
     if (!user) {
@@ -75,6 +89,8 @@ export default function NoteListContainer() {
       onDebugDateChange={setDebugDate}
       userDisplayName={user.displayName}
       onLogout={() => alert('로그아웃 기능이 비활성화 상태입니다.')}
+      geminiKey={geminiKey}
+      onSaveApiKey={handleSaveApiKey}
     />
   );
 }
