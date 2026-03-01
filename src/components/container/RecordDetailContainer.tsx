@@ -11,6 +11,7 @@ import {
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { RecordItem } from '@/types/note';
 import RecordDetailPresentation, { RecordFormData } from '../../components/presentation/RecordDetailPresentation';
+import { polishText } from '@/lib/gemini'; // Gemini 유틸 추가
 
 export default function RecordDetailContainer({ params }: { params: Promise<{ id: string }> }) {
   const { id: dateId } = use(params);
@@ -61,14 +62,16 @@ export default function RecordDetailContainer({ params }: { params: Promise<{ id
 
   const handleAiPolish = async (text: string): Promise<string> => {
     setIsAiPolishing(true);
-    // AI 시뮬레이션: 실제로는 서버 API 호출 가능
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const polished = `[AI로 풍성해진 문장] ${text} - 이 찰나의 깨달음은 마치 밤하늘에 수놓인 별빛처럼 나의 내면을 은은하게 밝혀줍니다. 정해진 틀을 벗어나 마주하는 이 새로운 공기는 나의 세계를 더 넓은 곳으로 인도하는 초대장이 아닐까요.`;
-        resolve(polished);
-        setIsAiPolishing(false);
-      }, 1200);
-    });
+    try {
+      const polished = await polishText(text); // 진짜 Gemini 호출
+      return polished;
+    } catch (err) {
+      console.error('AI Polish Error:', err);
+      alert('AI 다듬기 중 오류가 발생했습니다. API 키 설정을 확인해주세요.');
+      return text;
+    } finally {
+      setIsAiPolishing(false);
+    }
   };
 
   const handleSubmit = async (data: RecordFormData) => {

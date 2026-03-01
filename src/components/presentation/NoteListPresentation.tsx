@@ -1,6 +1,7 @@
 'use client';
 
 import { Note } from '@/types/note';
+import Link from 'next/link';
 
 interface NoteListPresentationProps {
   notes: Note[];
@@ -29,46 +30,56 @@ export default function NoteListPresentation({
 }: NoteListPresentationProps) {
   return (
     <main className="container-layout">
-      <header className="header-section" onDoubleClick={onToggleDebug}>
+      {/* Navigation Bar */}
+      <div className="nav-bar">
+        <div style={{fontWeight: 'bold', fontSize: '1.2rem'}}>Book Maker <span style={{fontSize: '0.8rem', color: '#6366f1'}}>Beta</span></div>
+        <div className="nav-links">
+          <Link href="/" className="active">홈</Link>
+          <Link href="/write">책 쓰기</Link>
+          <Link href="/books">서재</Link>
+        </div>
+      </div>
+
+      <header className="header-section" onDoubleClick={onToggleDebug} style={{marginTop: '40px'}}>
         <div style={{display: 'flex', justifyContent: 'flex-end', marginBottom: '20px'}}>
             <button onClick={onLogout} style={{background: 'none', border: '1px solid #333', color: '#666', padding: '4px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem'}}>로그아웃</button>
         </div>
-        <h1 style={{fontSize: '3rem'}}>🌙</h1>
-        <h2 style={{fontSize: '2rem', color: 'white', marginBottom: '8px'}}>Night Reading</h2>
-        <p>{userDisplayName}님의 밤이 기록으로 남는 공간</p>
+        <h1 style={{fontSize: '3.5rem', marginBottom: '16px'}}>🌙</h1>
+        <h2 style={{fontSize: '2.5rem', color: 'white', marginBottom: '8px', fontWeight: 'bold'}}>Night Reading</h2>
+        <p style={{fontSize: '1.1rem', color: '#888'}}>{userDisplayName}님의 사유가 기록되는 밤입니다</p>
       </header>
 
-      {/* Stats Summary - Simplified for now */}
-      <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '40px'}}>
-        <div className="card-base" style={{padding: '20px', textAlign: 'center'}}>
-          <span style={{color: '#a0a0a0', fontSize: '0.8rem'}}>총 기록 일수</span>
-          <p style={{fontSize: '1.8rem', fontWeight: 'bold', margin: '8px 0', color: '#6366f1'}}>{notes.length}일</p>
+      {/* Dashboard Stats */}
+      <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '48px'}}>
+        <div className="card-base" style={{padding: '30px', textAlign: 'center', background: 'linear-gradient(145deg, #1a1a1a, #151515)'}}>
+          <span style={{color: '#666', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px'}}>총 기록 일수</span>
+          <p style={{fontSize: '2.5rem', fontWeight: 'bold', margin: '12px 0', color: '#6366f1'}}>{notes.length}</p>
         </div>
-        <div className="card-base" style={{padding: '20px', textAlign: 'center'}}>
-          <span style={{color: '#a0a0a0', fontSize: '0.8rem'}}>이번 달 기록</span>
-          <p style={{fontSize: '1.8rem', fontWeight: 'bold', margin: '8px 0', color: '#fbbf24'}}>
-            {notes.filter(n => n.id.startsWith(todayId.slice(0, 7))).length}회
+        <div className="card-base" style={{padding: '30px', textAlign: 'center', background: 'linear-gradient(145deg, #1a1a1a, #151515)'}}>
+          <span style={{color: '#666', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px'}}>이번 달 기록</span>
+          <p style={{fontSize: '2.5rem', fontWeight: 'bold', margin: '12px 0', color: '#fbbf24'}}>
+            {notes.filter(n => n.id.startsWith(todayId.slice(0, 7))).length}
           </p>
         </div>
       </div>
 
       <div className="note-list-view">
         {isDebug && (
-          <div className="card-base" style={{borderColor: '#ef4444', marginBottom: '24px', padding: '24px'}}>
-            <h4 style={{color: '#ef4444', marginTop: 0}}>🛠 Debug Mode</h4>
-            <div style={{display: 'flex', gap: '10px'}}>
+          <div className="card-base" style={{borderColor: '#ef4444', marginBottom: '32px', padding: '24px', background: 'rgba(239, 68, 68, 0.05)'}}>
+            <h4 style={{color: '#ef4444', marginTop: 0, marginBottom: '16px'}}>🛠 Debug Mode: 과거 기록 생성</h4>
+            <div style={{display: 'flex', gap: '12px'}}>
               <input 
                 type="date" 
                 value={debugDate} 
                 onChange={(e) => onDebugDateChange(e.target.value)}
-                style={{flex: 2, background: '#252525', border: '1px solid #333', color: 'white', padding: '10px', borderRadius: '8px'}}
+                style={{flex: 2, background: '#121212', border: '1px solid #333', color: 'white', padding: '12px', borderRadius: '8px', outline: 'none'}}
               />
               <button 
                 className="button-primary" 
-                style={{flex: 1, backgroundColor: '#ef4444', padding: '10px'}}
+                style={{flex: 1, backgroundColor: '#ef4444'}}
                 onClick={() => onStartRecord(debugDate)}
               >
-                생성
+                기록지 생성
               </button>
             </div>
           </div>
@@ -76,26 +87,39 @@ export default function NoteListPresentation({
 
         <button 
           className="button-primary" 
-          style={{ marginBottom: '48px', fontSize: '1.2rem', boxShadow: hasTodayRecord ? 'none' : '0 0 20px rgba(99, 102, 241, 0.4)' }}
+          style={{ 
+            width: '100%',
+            padding: '24px',
+            borderRadius: '16px',
+            fontSize: '1.25rem', 
+            marginBottom: '64px',
+            background: hasTodayRecord ? '#1e1e1e' : '#6366f1',
+            boxShadow: hasTodayRecord ? 'none' : '0 10px 40px rgba(99, 102, 241, 0.3)',
+            border: hasTodayRecord ? '1px solid #333' : 'none'
+          }}
           onClick={() => onStartRecord()}
         >
-          {hasTodayRecord ? '🌙 오늘의 기록 이어가기' : '✨ 오늘의 기록 시작하기'}
+          {hasTodayRecord ? '🌙 오늘의 밤 기록 이어가기' : '✨ 새로운 밤의 기록 시작하기'}
         </button>
 
-        <h3 style={{color: '#a0a0a0', marginBottom: '20px', fontSize: '1rem', borderBottom: '1px solid #333', paddingBottom: '10px'}}>나의 기록들</h3>
+        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid #262626', paddingBottom: '16px'}}>
+            <h3 style={{color: '#eee', margin: 0, fontSize: '1.2rem', fontWeight: '600'}}>나의 기록 보관함</h3>
+            <span style={{fontSize: '0.85rem', color: '#555'}}>{notes.length}개의 기록</span>
+        </div>
+
         <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
           {notes.map((note) => (
-            <a href={`/record/${note.id}`} key={note.id} style={{textDecoration: 'none'}}>
+            <Link href={`/record/${note.id}`} key={note.id} style={{textDecoration: 'none'}}>
               <div className="card-base" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '24px' }}>
                 <div>
-                  <span style={{fontSize: '0.8rem', color: '#6366f1', display: 'block', marginBottom: '4px'}}>
-                    {note.id.split('-')[1]}월 {note.id.split('-')[2]}일
+                  <span style={{fontSize: '0.8rem', color: '#6366f1', fontWeight: '600', display: 'block', marginBottom: '6px', letterSpacing: '0.5px'}}>
+                    {note.id.replace(/-/g, '. ')}
                   </span>
-                  <p style={{fontSize: '1.2rem', margin: 0, color: 'white'}}>{note.title}</p>
+                  <p style={{fontSize: '1.3rem', margin: 0, color: 'white', fontWeight: '500'}}>{note.title}</p>
                 </div>
-                <span style={{color: '#333'}}>→</span>
+                <div style={{color: '#333', fontSize: '1.5rem'}}>→</div>
               </div>
-            </a>
+            </Link>
           ))}
         </div>
       </div>
