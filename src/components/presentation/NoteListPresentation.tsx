@@ -33,6 +33,9 @@ export default function NoteListPresentation({
   });
 
   const handleTagKeyDown = (e: React.KeyboardEvent) => {
+    // 한글 조합 중일 때는 엔터/스페이스 처리를 건너뜀 (자음모음 분리 방지)
+    if (e.nativeEvent.isComposing) return;
+
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       const val = tagInput.trim().replace(/^#/, '');
@@ -43,6 +46,10 @@ export default function NoteListPresentation({
     } else if (e.key === 'Backspace' && !tagInput && tags.length > 0) {
       setTags(tags.slice(0, -1));
     }
+  };
+
+  const removeTag = (index: number) => {
+    setTags(tags.filter((_, i) => i !== index));
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -74,58 +81,32 @@ export default function NoteListPresentation({
 
   return (
     <div style={{ marginTop: '20px' }}>
-      {/* 1. Date Selector: Horizontal buttons */}
-      <div style={{ 
-        display: 'flex', 
-        gap: '8px', 
-        overflowX: 'auto', 
-        paddingBottom: '16px', 
-        marginBottom: '24px',
-        scrollbarWidth: 'none',
-        msOverflowStyle: 'none'
-      }}>
-        {/* 오늘 버튼 고정 */}
+      {/* 1. Date Selector */}
+      <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '16px', marginBottom: '24px', scrollbarWidth: 'none' }}>
         <button
           onClick={() => onDateChange(todayStr)}
           style={{
-            padding: '10px 20px',
-            borderRadius: '25px',
-            border: '1px solid #333',
+            padding: '10px 20px', borderRadius: '25px', border: '1px solid #333',
             background: selectedDate === todayStr ? '#6366f1' : '#161616',
             color: selectedDate === todayStr ? 'white' : '#888',
-            whiteSpace: 'nowrap',
-            fontSize: '0.9rem',
-            cursor: 'pointer',
-            fontWeight: selectedDate === todayStr ? '600' : '400',
-            transition: 'all 0.2s'
+            whiteSpace: 'nowrap', fontSize: '0.9rem', cursor: 'pointer', fontWeight: selectedDate === todayStr ? '600' : '400'
           }}
-        >
-          오늘
-        </button>
-        {/* 과거 날짜 버튼들 (기록이 있는 날만) */}
+        >오늘</button>
         {notes.filter(n => n.id !== todayStr).map((note) => (
           <button
             key={note.id}
             onClick={() => onDateChange(note.id)}
             style={{
-              padding: '10px 20px',
-              borderRadius: '25px',
-              border: '1px solid #333',
+              padding: '10px 20px', borderRadius: '25px', border: '1px solid #333',
               background: selectedDate === note.id ? '#6366f1' : '#161616',
               color: selectedDate === note.id ? 'white' : '#888',
-              whiteSpace: 'nowrap',
-              fontSize: '0.9rem',
-              cursor: 'pointer',
-              fontWeight: selectedDate === note.id ? '600' : '400',
-              transition: 'all 0.2s'
+              whiteSpace: 'nowrap', fontSize: '0.9rem', cursor: 'pointer', fontWeight: selectedDate === note.id ? '600' : '400'
             }}
-          >
-            {note.id.split('-').slice(1).join('. ')}
-          </button>
+          >{note.id.split('-').slice(1).join('. ')}</button>
         ))}
       </div>
 
-      {/* 2. Quick Entry Section: Notion/Twitter Hybrid */}
+      {/* 2. Quick Entry Section */}
       <div style={{ marginBottom: '64px' }}>
         <form onSubmit={handleSubmit(onSubmit)} className="card-base" style={{ padding: '24px', background: '#161616', border: '1px solid #333' }}>
           <textarea 
@@ -143,19 +124,21 @@ export default function NoteListPresentation({
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '15px' }}>
             {tags.map((tag, i) => (
-              <span key={i} style={{ background: '#6366f1', color: 'white', padding: '4px 12px', borderRadius: '20px', fontSize: '0.85rem' }}>#{tag}</span>
+              <span key={i} style={{ background: '#6366f1', color: 'white', padding: '4px 12px', borderRadius: '20px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                #{tag} <span onClick={() => removeTag(i)} style={{ cursor: 'pointer', fontSize: '10px' }}>✕</span>
+              </span>
             ))}
             <input 
               value={tagInput.startsWith('#') ? tagInput : tagInput ? `#${tagInput}` : ''}
               onChange={(e) => setTagInput(e.target.value.replace(/^#/, ''))}
               onKeyDown={handleTagKeyDown}
               placeholder={tags.length === 0 ? "#태그입력 (스페이스)" : "#"}
-              style={{ background: 'none', border: 'none', color: '#6366f1', outline: 'none', fontSize: '0.9rem', flex: 1 }}
+              style={{ background: 'none', border: 'none', color: '#6366f1', outline: 'none', fontSize: '0.9rem', flex: 1, minWidth: '100px' }}
             />
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #222', paddingTop: '15px' }}>
-            <button type="button" onClick={() => fileInputRef.current?.click()} style={{ background: '#222', border: 'none', borderRadius: '8px', padding: '8px 12px', color: '#888', cursor: 'pointer' }}>📷 이미지 첨부</button>
+            <button type="button" onClick={() => fileInputRef.current?.click()} style={{ background: '#222', border: 'none', borderRadius: '8px', padding: '8px 12px', color: '#888', cursor: 'pointer' }}>📷 이미지</button>
             <input type="file" ref={fileInputRef} onChange={handleImageUpload} style={{ display: 'none' }} accept="image/*" />
             <button type="submit" disabled={isUploading} className="button-primary" style={{ borderRadius: '30px', padding: '10px 24px', fontSize: '0.9rem' }}>
               {isUploading ? '업로드 중...' : '남기기'}
@@ -164,7 +147,7 @@ export default function NoteListPresentation({
         </form>
       </div>
 
-      {/* 3. Timeline: Notion-style Inline images/text */}
+      {/* 3. Timeline */}
       <div className="timeline">
         <h3 style={{ fontSize: '0.85rem', color: '#444', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '32px' }}>
           {selectedDate === todayStr ? '오늘의 타임라인' : `${selectedDate}의 타임라인`}
@@ -183,18 +166,13 @@ export default function NoteListPresentation({
                 </div>
                 {record.imageUrl && (
                   <div style={{ marginBottom: '16px' }}>
-                    <img src={record.imageUrl} alt="record img" style={{ width: '100%', borderRadius: '16px', border: '1px solid #222' }} />
+                    <img src={record.imageUrl} alt="img" style={{ width: '100%', borderRadius: '16px', border: '1px solid #222' }} />
                   </div>
                 )}
-                <p style={{ fontSize: '1.2rem', lineHeight: '1.8', color: '#ddd', margin: 0, fontWeight: '400' }}>{record.content}</p>
+                <p style={{ fontSize: '1.2rem', lineHeight: '1.8', color: '#ddd', margin: 0 }}>{record.content}</p>
               </div>
             </div>
           ))}
-          {recentRecords.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '60px 0', border: '1px dashed #222', borderRadius: '16px' }}>
-              <p style={{ color: '#444', fontSize: '0.9rem' }}>선택한 날짜에 기록된 내용이 없습니다.</p>
-            </div>
-          )}
         </div>
       </div>
     </div>

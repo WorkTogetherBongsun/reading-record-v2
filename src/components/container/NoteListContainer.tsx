@@ -9,7 +9,9 @@ import {
   push, 
   query, 
   orderByChild, 
-  equalTo 
+  equalTo,
+  get,
+  update
 } from 'firebase/database';
 import { Note, RecordItem } from '@/types/note';
 import NoteListPresentation from '../presentation/NoteListPresentation';
@@ -21,7 +23,6 @@ export default function NoteListContainer() {
   const [recentRecords, setRecentRecords] = useState<RecordItem[]>([]);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // 1. 모든 노트(날짜 버튼용) 로드
   useEffect(() => {
     if (!user) return;
     const notesRef = ref(db, 'notes');
@@ -36,7 +37,6 @@ export default function NoteListContainer() {
     return () => unsubscribe();
   }, [user]);
 
-  // 2. 선택된 날짜의 타임라인 로드
   useEffect(() => {
     if (!user || !selectedDate) return;
     const recordsPath = ref(db, `notes/${user.uid}_${selectedDate}/records`);
@@ -44,7 +44,7 @@ export default function NoteListContainer() {
       const data = snapshot.val();
       if (data) {
         const recordsList = Object.keys(data).map(key => ({ id: key, ...data[key] }));
-        // 시간순 정렬 (최신이 아래로 가게 하거나 위로 가게 하거나 - 여기서는 최신이 위로)
+        // 타임라인은 최신순 정렬
         setRecentRecords(recordsList.sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
       } else {
         setRecentRecords([]);
@@ -57,14 +57,18 @@ export default function NoteListContainer() {
     if (!user) return;
     const notePath = `notes/${user.uid}_${selectedDate}`;
     
-    // 선택된 날짜의 메인 노트 정보 생성/업데이트
-    await set(ref(db, notePath), {
-      title: `${selectedDate.split('-')[1]}월 ${selectedDate.split('-')[2]}일의 생각`,
-      createdAt: new Date().toISOString(),
-      id: selectedDate,
-      userId: user.uid
-    });
+    // 1. 해당 날짜 노드가 있는지 먼저 확인 (기존 데이터 보호)
+    const noteSnap = await get(ref(db, notePath));
+    if (!noteSnap.exists()) {
+        await set(ref(db, notePath), {
+            title: `${selectedDate.split('-')[1]}월 ${selectedDate.split('-')[2]}일의 생각`,
+            createdAt: new Date().toISOString(),
+            id: selectedDate,
+            userId: user.uid
+        });
+    }
 
+    // 2. 새로운 글(Record) 추가
     const recordsRef = ref(db, `${notePath}/records`);
     const newRecordRef = push(recordsRef);
     await set(newRecordRef, {
