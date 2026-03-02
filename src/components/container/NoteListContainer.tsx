@@ -1,96 +1,97 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { db, auth } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { 
   ref, 
   onValue, 
   set, 
+  push,
   query, 
   orderByChild,
   equalTo,
-  serverTimestamp 
+  serverTimestamp,
+  limitToLast
 } from 'firebase/database';
-import { Note } from '@/types/note';
+import { Note, RecordItem } from '@/types/note';
 import NoteListPresentation from '../presentation/NoteListPresentation';
 
 export default function NoteListContainer() {
-  const [user, setUser] = useState<any>({ uid: 'default_user', displayName: '기록자' }); 
+  const [user] = useState<any>({ uid: 'default_user', displayName: '기록자' }); 
   const [notes, setNotes] = useState<Note[]>([]);
+  const [recentRecords, setRecentRecords] = useState<RecordItem[]>([]);
   const [isDebug, setIsDebug] = useState(false);
   const [debugDate, setDebugDate] = useState('');
-  const [geminiKey, setGeminiKey] = useState('');
   const todayId = new Date().toISOString().split('T')[0];
 
+  // 1. 일 단위 기록 목록 로드
   useEffect(() => {
-    // 로컬 스토리지에서 API 키 불러오기
-    const savedKey = localStorage.getItem('gemini_api_key') || '';
-    setGeminiKey(savedKey);
-  }, []);
-
-  const handleSaveApiKey = (key: string) => {
-    localStorage.setItem('gemini_api_key', key);
-    setGeminiKey(key);
-    alert('API 키가 브라우저에 안전하게 저장되었습니다. 이제 AI 기능을 사용할 수 있습니다! 🐶');
-    window.location.reload(); // 키 적용을 위해 새로고침
-  };
-
-  useEffect(() => {
-    if (!user) {
-      setNotes([]);
-      return;
-    }
-
+    if (!user) return;
     const notesRef = ref(db, 'notes');
     const userNotesQuery = query(notesRef, orderByChild('userId'), equalTo(user.uid));
-
-    const unsubscribe = onValue(userNotesQuery, (snapshot) => {
+    onValue(userNotesQuery, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const notesList = Object.keys(data).map(key => ({
-          ...data[key]
-        })).sort((a, b) => b.id.localeCompare(a.id));
+        const notesList = Object.keys(data).map(key => ({ ...data[key] }));
         setNotes(notesList);
-      } else {
-        setNotes([]);
+        
+        // 2. 최근 모든 문장(Records) 수집하여 타임라인 생성
+        const allRecs: RecordItem[] = [];
+        notesList.forEach(note => {
+          if (note.records) {
+            Object.keys(note.records).forEach(rKey => {
+              allRecs.push({ id: rKey, ...note.records[rKey] });
+            });
+          }
+        });
+        setRecentRecords(allRecs.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 20));
       }
     });
-
-    return () => unsubscribe();
   }, [user]);
 
-  const handleStartRecord = async (targetId?: string) => {
+  const handleQuickSubmit = async (data: { content: string, tags: string }) => {
     if (!user) return;
-    const finalId = targetId || todayId;
-    const [y, m, d] = finalId.split('-');
-    
-    const notePath = `notes/${user.uid}_${finalId}`;
+
+    // 1. 오늘 날짜의 노트가 있는지 먼저 확인 및 생성
+    const notePath = `notes/${user.uid}_${todayId}`;
     await set(ref(db, notePath), {
-      title: `${m}월 ${d}일의 밤`,
-      createdAt: serverTimestamp(),
-      id: finalId,
+      title: `${todayId.split('-')[1]}월 ${todayId.split('-')[2]}일의 생각`,
+      createdAt: new Date().toISOString(),
+      id: todayId,
+      userId: user.uid
+    }, { /* merge equivalent in set */ });
+
+    // 2. 오늘의 노트 아래에 레코드 추가
+    const recordsRef = ref(db, `${notePath}/records`);
+    const newRecordRef = push(recordsRef);
+    await set(newRecordRef, {
+      content: data.content,
+      tags: data.tags.split(',').map(t => t.trim()).filter(t => t !== ''),
+      type: 'insight',
+      category: '생각',
+      createdAt: new Date().toISOString(),
       userId: user.uid
     });
-    
-    window.location.href = `/record/${finalId}`;
   };
 
-  const hasTodayRecord = notes.some(n => n.id === todayId);
+  const handleStartRecord = async (targetId?: string) => {
+    const finalId = targetId || todayId;
+    window.location.href = `/record/${finalId}`;
+  };
 
   return (
     <NoteListPresentation 
       notes={notes}
+      recentRecords={recentRecords}
       todayId={todayId}
-      hasTodayRecord={hasTodayRecord}
+      userDisplayName={user.displayName}
+      onQuickSubmit={handleQuickSubmit}
+      onLogout={() => {}}
+      onToggleDebug={() => setIsDebug(!isDebug)}
       isDebug={isDebug}
       debugDate={debugDate}
-      onStartRecord={handleStartRecord}
-      onToggleDebug={() => setIsDebug(!isDebug)}
       onDebugDateChange={setDebugDate}
-      userDisplayName={user.displayName}
-      onLogout={() => alert('로그아웃 기능이 비활성화 상태입니다.')}
-      geminiKey={geminiKey}
-      onSaveApiKey={handleSaveApiKey}
+      onStartRecord={handleStartRecord}
     />
   );
 }
