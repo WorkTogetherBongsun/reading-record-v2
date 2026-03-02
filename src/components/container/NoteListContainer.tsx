@@ -9,9 +9,7 @@ import {
   push,
   query, 
   orderByChild,
-  equalTo,
-  serverTimestamp,
-  limitToLast
+  equalTo
 } from 'firebase/database';
 import { Note, RecordItem } from '@/types/note';
 import NoteListPresentation from '../presentation/NoteListPresentation';
@@ -24,7 +22,6 @@ export default function NoteListContainer() {
   const [debugDate, setDebugDate] = useState('');
   const todayId = new Date().toISOString().split('T')[0];
 
-  // 1. 일 단위 기록 목록 로드
   useEffect(() => {
     if (!user) return;
     const notesRef = ref(db, 'notes');
@@ -35,7 +32,6 @@ export default function NoteListContainer() {
         const notesList = Object.keys(data).map(key => ({ ...data[key] }));
         setNotes(notesList);
         
-        // 2. 최근 모든 문장(Records) 수집하여 타임라인 생성
         const allRecs: RecordItem[] = [];
         notesList.forEach(note => {
           if (note.records) {
@@ -44,29 +40,32 @@ export default function NoteListContainer() {
             });
           }
         });
-        setRecentRecords(allRecs.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 20));
+        // 최신순 정렬
+        setRecentRecords(allRecs.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 30));
       }
     });
   }, [user]);
 
-  const handleQuickSubmit = async (data: { content: string, tags: string }) => {
+  const handleQuickSubmit = async (data: { content: string, tags: string, imageUrl?: string }) => {
     if (!user) return;
 
-    // 1. 오늘 날짜의 노트가 있는지 먼저 확인 및 생성
     const notePath = `notes/${user.uid}_${todayId}`;
+    
+    // 1. 오늘 날짜의 메인 노트 정보 생성/업데이트
     await set(ref(db, notePath), {
       title: `${todayId.split('-')[1]}월 ${todayId.split('-')[2]}일의 생각`,
       createdAt: new Date().toISOString(),
       id: todayId,
       userId: user.uid
-    }, { /* merge equivalent in set */ });
+    });
 
-    // 2. 오늘의 노트 아래에 레코드 추가
+    // 2. 오늘의 노트 아래에 새로운 생각(레코드) 추가
     const recordsRef = ref(db, `${notePath}/records`);
     const newRecordRef = push(recordsRef);
     await set(newRecordRef, {
       content: data.content,
       tags: data.tags.split(',').map(t => t.trim()).filter(t => t !== ''),
+      imageUrl: data.imageUrl || '',
       type: 'insight',
       category: '생각',
       createdAt: new Date().toISOString(),
