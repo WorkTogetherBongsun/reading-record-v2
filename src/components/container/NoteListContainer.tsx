@@ -2,24 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { 
-  ref, 
-  onValue, 
-  set, 
-  push,
-  query, 
-  orderByChild,
-  equalTo
-} from 'firebase/database';
+import { ref, onValue, set, push, query, orderByChild, equalTo } from 'firebase/database';
 import { Note, RecordItem } from '@/types/note';
 import NoteListPresentation from '../presentation/NoteListPresentation';
+import GlobalHeader from '../common/GlobalHeader';
 
 export default function NoteListContainer() {
   const [user] = useState<any>({ uid: 'default_user', displayName: '기록자' }); 
   const [notes, setNotes] = useState<Note[]>([]);
   const [recentRecords, setRecentRecords] = useState<RecordItem[]>([]);
-  const todayId = new Date().toISOString().split('T')[0];
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
+  // 1. 모든 노트(날짜) 목록 로드
   useEffect(() => {
     if (!user) return;
     const notesRef = ref(db, 'notes');
@@ -28,34 +22,37 @@ export default function NoteListContainer() {
       const data = snapshot.val();
       if (data) {
         const notesList = Object.keys(data).map(key => ({ ...data[key] }));
-        setNotes(notesList);
-        
-        const allRecs: RecordItem[] = [];
-        notesList.forEach(note => {
-          if (note.records) {
-            Object.keys(note.records).forEach(rKey => {
-              allRecs.push({ id: rKey, ...note.records[rKey] });
-            });
-          }
-        });
-        setRecentRecords(allRecs.sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
-      } else {
-        setNotes([]);
-        setRecentRecords([]);
+        setNotes(notesList.sort((a, b) => b.id.localeCompare(a.id)));
       }
     });
   }, [user]);
 
+  // 2. 선택된 날짜의 타임라인 로드
+  useEffect(() => {
+    if (!user || !selectedDate) return;
+    const recordsPath = ref(db, `notes/${user.uid}_${selectedDate}/records`);
+    onValue(recordsPath, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const recordsList = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+        setRecentRecords(recordsList.sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+      } else {
+        setRecentRecords([]);
+      }
+    });
+  }, [user, selectedDate]);
+
   const handleQuickSubmit = async (data: { content: string, tags: string[], imageUrl?: string }) => {
     if (!user) return;
-
-    const notePath = `notes/${user.uid}_${todayId}`;
+    const notePath = `notes/${user.uid}_${selectedDate}`;
+    
+    // 날짜 메인 노드가 없으면 생성
     await set(ref(db, notePath), {
-      title: `${todayId.split('-')[1]}월 ${todayId.split('-')[2]}일의 생각`,
+      title: `${selectedDate.split('-')[1]}월 ${selectedDate.split('-')[2]}일의 생각`,
       createdAt: new Date().toISOString(),
-      id: todayId,
+      id: selectedDate,
       userId: user.uid
-    });
+    }, { /* merge equivalent */ });
 
     const recordsRef = ref(db, `${notePath}/records`);
     const newRecordRef = push(recordsRef);
@@ -71,18 +68,18 @@ export default function NoteListContainer() {
   };
 
   return (
-    <NoteListPresentation 
-      notes={notes}
-      recentRecords={recentRecords}
-      todayId={todayId}
-      userDisplayName={user.displayName}
-      onQuickSubmit={handleQuickSubmit}
-      onLogout={() => {}}
-      onToggleDebug={() => {}}
-      isDebug={false}
-      debugDate=""
-      onDebugDateChange={() => {}}
-      onStartRecord={() => {}}
-    />
+    <main className="container-layout">
+      <GlobalHeader />
+      <NoteListPresentation 
+        notes={notes}
+        recentRecords={recentRecords}
+        selectedDate={selectedDate}
+        onDateChange={setSelectedDate}
+        onQuickSubmit={handleQuickSubmit}
+        todayId={new Date().toISOString().split('T')[0]}
+        userDisplayName={user.displayName}
+        onLogout={() => {}}
+      />
+    </main>
   );
 }
