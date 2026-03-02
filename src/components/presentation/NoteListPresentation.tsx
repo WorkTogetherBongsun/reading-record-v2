@@ -1,6 +1,7 @@
 'use client';
 
 import { Note, RecordItem } from '@/types/note';
+import Link from 'next/link';
 import { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { storage } from '@/lib/firebase';
@@ -26,6 +27,8 @@ export default function NoteListPresentation({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
+  const [isComposing, setIsComposing] = useState(false); // 한글 조합 상태
+  const [searchTag, setSearchTag] = useState<string | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { register, handleSubmit, reset, setValue } = useForm({
@@ -33,12 +36,12 @@ export default function NoteListPresentation({
   });
 
   const handleTagKeyDown = (e: React.KeyboardEvent) => {
-    // 한글 조합 중일 때는 엔터/스페이스 처리를 건너뜀 (자음모음 분리 방지)
-    if (e.nativeEvent.isComposing) return;
+    // 한글 조합 중이면 로직 실행 방지
+    if (isComposing) return;
 
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      const val = tagInput.trim().replace(/^#/, '');
+      const val = tagInput.trim();
       if (val && !tags.includes(val)) {
         setTags([...tags, val]);
       }
@@ -46,10 +49,6 @@ export default function NoteListPresentation({
     } else if (e.key === 'Backspace' && !tagInput && tags.length > 0) {
       setTags(tags.slice(0, -1));
     }
-  };
-
-  const removeTag = (index: number) => {
-    setTags(tags.filter((_, i) => i !== index));
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -77,11 +76,15 @@ export default function NoteListPresentation({
     setPreviewUrl(null);
   };
 
+  const filteredRecords = searchTag 
+    ? recentRecords.filter(r => r.tags?.includes(searchTag))
+    : recentRecords;
+
   const todayStr = new Date().toISOString().split('T')[0];
 
   return (
     <div style={{ marginTop: '20px' }}>
-      {/* 1. Date Selector */}
+      {/* Date Selector */}
       <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '16px', marginBottom: '24px', scrollbarWidth: 'none' }}>
         <button
           onClick={() => onDateChange(todayStr)}
@@ -106,12 +109,12 @@ export default function NoteListPresentation({
         ))}
       </div>
 
-      {/* 2. Quick Entry Section */}
+      {/* Quick Entry Section */}
       <div style={{ marginBottom: '64px' }}>
         <form onSubmit={handleSubmit(onSubmit)} className="card-base" style={{ padding: '24px', background: '#161616', border: '1px solid #333' }}>
           <textarea 
             {...register('content', { required: true })}
-            placeholder={selectedDate === todayStr ? "오늘의 생각을 한 줄로 남겨보세요..." : `${selectedDate}의 기록에 추가할 내용을 적어보세요...`}
+            placeholder="지금 어떤 생각을 하고 계신가요?"
             style={{ width: '100%', background: 'none', border: 'none', color: 'white', fontSize: '1.25rem', outline: 'none', resize: 'none', minHeight: '80px', marginBottom: '10px', lineHeight: '1.6' }}
           />
           
@@ -122,19 +125,23 @@ export default function NoteListPresentation({
             </div>
           )}
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '15px' }}>
+          {/* 태그 입력 영역 (개선됨) */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '15px', alignItems: 'center' }}>
             {tags.map((tag, i) => (
-              <span key={i} style={{ background: '#6366f1', color: 'white', padding: '4px 12px', borderRadius: '20px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                #{tag} <span onClick={() => removeTag(i)} style={{ cursor: 'pointer', fontSize: '10px' }}>✕</span>
-              </span>
+              <span key={i} style={{ background: '#6366f1', color: 'white', padding: '4px 12px', borderRadius: '20px', fontSize: '0.85rem' }}>#{tag}</span>
             ))}
-            <input 
-              value={tagInput.startsWith('#') ? tagInput : tagInput ? `#${tagInput}` : ''}
-              onChange={(e) => setTagInput(e.target.value.replace(/^#/, ''))}
-              onKeyDown={handleTagKeyDown}
-              placeholder={tags.length === 0 ? "#태그입력 (스페이스)" : "#"}
-              style={{ background: 'none', border: 'none', color: '#6366f1', outline: 'none', fontSize: '0.9rem', flex: 1, minWidth: '100px' }}
-            />
+            <div style={{ display: 'flex', alignItems: 'center', color: '#6366f1', fontSize: '0.9rem' }}>
+              <span style={{ marginRight: '2px' }}>#</span>
+              <input 
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={handleTagKeyDown}
+                onCompositionStart={() => setIsComposing(true)}
+                onCompositionEnd={() => setIsComposing(false)}
+                placeholder="태그입력"
+                style={{ background: 'none', border: 'none', color: '#6366f1', outline: 'none', fontSize: '0.9rem', width: '100px' }}
+              />
+            </div>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #222', paddingTop: '15px' }}>
@@ -147,33 +154,46 @@ export default function NoteListPresentation({
         </form>
       </div>
 
-      {/* 3. Timeline */}
-      <div className="timeline">
-        <h3 style={{ fontSize: '0.85rem', color: '#444', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '32px' }}>
+      {/* Timeline Filter UI */}
+      <div style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h3 style={{ fontSize: '0.85rem', color: '#444', textTransform: 'uppercase', letterSpacing: '2px', margin: 0 }}>
           {selectedDate === todayStr ? '오늘의 타임라인' : `${selectedDate}의 타임라인`}
         </h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '48px' }}>
-          {recentRecords.map((record) => (
-            <div key={record.id} style={{ display: 'flex', gap: '24px' }}>
-              <div style={{ minWidth: '50px', textAlign: 'right', fontSize: '0.8rem', color: '#333', paddingTop: '4px' }}>
-                {record.createdAt?.slice(11, 16)}
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
-                  {record.tags?.map(tag => (
-                    <span key={tag} style={{ fontSize: '0.75rem', color: '#6366f1', background: 'rgba(99, 102, 241, 0.05)', padding: '2px 8px', borderRadius: '4px', fontWeight: '500' }}>#{tag}</span>
-                  ))}
-                </div>
-                {record.imageUrl && (
-                  <div style={{ marginBottom: '16px' }}>
-                    <img src={record.imageUrl} alt="img" style={{ width: '100%', borderRadius: '16px', border: '1px solid #222' }} />
-                  </div>
-                )}
-                <p style={{ fontSize: '1.2rem', lineHeight: '1.8', color: '#ddd', margin: 0 }}>{record.content}</p>
-              </div>
+        {searchTag && (
+          <div 
+            onClick={() => setSearchTag(null)}
+            style={{ fontSize: '0.8rem', color: '#6366f1', cursor: 'pointer', background: 'rgba(99, 102, 241, 0.1)', padding: '4px 12px', borderRadius: '20px' }}
+          >
+            #{searchTag} 필터 해제 ✕
+          </div>
+        )}
+      </div>
+
+      <div className="timeline" style={{ display: 'flex', flexDirection: 'column', gap: '48px' }}>
+        {filteredRecords.map((record) => (
+          <div key={record.id} style={{ display: 'flex', gap: '24px' }}>
+            <div style={{ minWidth: '50px', textAlign: 'right', fontSize: '0.8rem', color: '#333', paddingTop: '4px' }}>
+              {record.createdAt?.slice(11, 16)}
             </div>
-          ))}
-        </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
+                {record.tags?.map(tag => (
+                  <span 
+                    key={tag} 
+                    onClick={() => setSearchTag(tag)}
+                    style={{ fontSize: '0.75rem', color: '#6366f1', background: 'rgba(99, 102, 241, 0.05)', padding: '2px 8px', borderRadius: '4px', fontWeight: '500', cursor: 'pointer' }}
+                  >#{tag}</span>
+                ))}
+              </div>
+              {record.imageUrl && (
+                <div style={{ marginBottom: '16px' }}>
+                  <img src={record.imageUrl} alt="record img" style={{ width: '100%', borderRadius: '16px', border: '1px solid #222' }} />
+                </div>
+              )}
+              <p style={{ fontSize: '1.2rem', lineHeight: '1.8', color: '#ddd', margin: 0 }}>{record.content}</p>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
