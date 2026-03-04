@@ -15,6 +15,13 @@ interface NoteListPresentationProps {
   onQuickSubmit: (data: { content: string, tags: string[], imageUrl?: string }) => void;
   userDisplayName: string;
   onGetAiFeedback: (text: string) => Promise<AiFeedback | null>;
+  todayId: string;
+  onLogout: () => void;
+  onToggleDebug: () => void;
+  isDebug: boolean;
+  debugDate: string;
+  onDebugDateChange: (date: string) => void;
+  onStartRecord: (date?: string) => void;
 }
 
 export default function NoteListPresentation({
@@ -24,6 +31,7 @@ export default function NoteListPresentation({
   onDateChange,
   onQuickSubmit,
   onGetAiFeedback,
+  todayId,
 }: NoteListPresentationProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -89,19 +97,17 @@ export default function NoteListPresentation({
     setCurrentFeedback(null);
   };
 
-  const todayStr = new Date().toISOString().split('T')[0];
-
   return (
     <div style={{ marginTop: '20px' }}>
       {/* Date Selector */}
       <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '16px', marginBottom: '24px', scrollbarWidth: 'none' }}>
-        <button onClick={() => onDateChange(todayStr)} style={{ padding: '10px 20px', borderRadius: '25px', border: '1px solid #333', background: selectedDate === todayStr ? '#6366f1' : '#161616', color: selectedDate === todayStr ? 'white' : '#888', whiteSpace: 'nowrap', fontSize: '0.9rem', cursor: 'pointer', fontWeight: selectedDate === todayStr ? '600' : '400' }}>오늘</button>
-        {notes.filter(n => n.id !== todayStr).map((note) => (
+        <button onClick={() => onDateChange(todayId)} style={{ padding: '10px 20px', borderRadius: '25px', border: '1px solid #333', background: selectedDate === todayId ? '#6366f1' : '#161616', color: selectedDate === todayId ? 'white' : '#888', whiteSpace: 'nowrap', fontSize: '0.9rem', cursor: 'pointer', fontWeight: selectedDate === todayId ? '600' : '400' }}>오늘</button>
+        {notes.filter(n => n.id !== todayId).map((note) => (
           <button key={note.id} onClick={() => onDateChange(note.id)} style={{ padding: '10px 20px', borderRadius: '25px', border: '1px solid #333', background: selectedDate === note.id ? '#6366f1' : '#161616', color: selectedDate === note.id ? 'white' : '#888', whiteSpace: 'nowrap', fontSize: '0.9rem', cursor: 'pointer', fontWeight: selectedDate === note.id ? '600' : '400' }}>{note.id.split('-').slice(1).join('. ')}</button>
         ))}
       </div>
 
-      {/* Quick Entry with AI Coaching */}
+      {/* Quick Entry Section */}
       <div style={{ marginBottom: '64px' }}>
         <form onSubmit={handleSubmit(onSubmit)} className="card-base" style={{ padding: '24px', background: '#161616', border: '1px solid #333', position: 'relative' }}>
           <div style={{ position: 'relative' }}>
@@ -165,13 +171,13 @@ export default function NoteListPresentation({
               {record.createdAt?.slice(11, 16)}
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
                 {record.tags?.map(tag => (
                   <span key={tag} style={{ fontSize: '0.75rem', color: '#6366f1', background: 'rgba(99, 102, 241, 0.05)', padding: '2px 8px', borderRadius: '4px', fontWeight: '500' }}>#{tag}</span>
                 ))}
               </div>
               {record.imageUrl && <div style={{ marginBottom: '16px' }}><img src={record.imageUrl} alt="record img" style={{ width: '100%', borderRadius: '16px', border: '1px solid #222' }} /></div>}
-              <p style={{ fontSize: '1.2rem', lineHeight: '1.8', color: '#ddd', margin: 0 }}>{record.content}</p>
+              <p style={{ fontSize: '1.2rem', lineHeight: '1.8', color: '#ddd', margin: 0, fontWeight: '400' }}>{record.content}</p>
             </div>
           </div>
         ))}

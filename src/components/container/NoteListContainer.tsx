@@ -12,7 +12,8 @@ export default function NoteListContainer() {
   const [user] = useState<any>({ uid: 'default_user', displayName: '기록자' }); 
   const [notes, setNotes] = useState<Note[]>([]);
   const [recentRecords, setRecentRecords] = useState<RecordItem[]>([]);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const todayId = new Date().toISOString().split('T')[0];
+  const [selectedDate, setSelectedDate] = useState(todayId);
 
   useEffect(() => {
     if (!user) return;
@@ -56,7 +57,6 @@ export default function NoteListContainer() {
     if (!user) return;
     const notePath = `notes/${user.uid}_${selectedDate}`;
     
-    // 날짜 메인 노드 업데이트/생성
     await set(ref(db, notePath), {
       title: `${selectedDate.split('-')[1]}월 ${selectedDate.split('-')[2]}일의 생각`,
       createdAt: new Date().toISOString(),
@@ -88,7 +88,7 @@ export default function NoteListContainer() {
         onQuickSubmit={handleQuickSubmit}
         onGetAiFeedback={handleAiFeedback}
         userDisplayName={user.displayName}
-        todayId={new Date().toISOString().split('T')[0]}
+        todayId={todayId}
         onLogout={() => {}}
         onToggleDebug={() => {}}
         isDebug={false}
