@@ -3,7 +3,6 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const getApiKey = () => {
   if (typeof window !== 'undefined') {
     const key = localStorage.getItem('gemini_api_key');
-    console.log("Fetching API Key from localStorage:", key ? "Found" : "Not Found");
     return key || "";
   }
   return "";
@@ -28,8 +27,8 @@ export const getSentenceFeedback = async (text: string): Promise<AiFeedback> => 
   
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    // 가장 안정적인 gemini-1.5-flash 모델로 변경 (지원 범위가 더 넓음)
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // 요청하신 gemini-2.0-flash-lite-preview-02-05 모델 사용 (가장 가볍고 효율적인 최신 모델)
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite-preview-02-05" });
 
     const prompt = `당신은 작가의 글쓰기를 돕는 전문 에세이 편집자입니다. 
     사용자가 작성한 문장을 분석하여 따뜻하고 지적인 피드백을 제공해주세요. 
@@ -47,10 +46,7 @@ export const getSentenceFeedback = async (text: string): Promise<AiFeedback> => 
     const response = await result.response;
     const rawText = response.text();
     
-    // JSON 파싱 전 정제 (마크다운 코드 블록 등이 포함될 경우 대비)
     const cleanedText = rawText.replace(/```json|```/g, "").trim();
-    
-    console.log("Gemini Raw Response:", rawText);
     return JSON.parse(cleanedText);
   } catch (err: any) {
     console.error("Gemini API Error:", err);
