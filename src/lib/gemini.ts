@@ -2,7 +2,9 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const getApiKey = () => {
   if (typeof window !== 'undefined') {
-    return localStorage.getItem('gemini_api_key') || "";
+    const key = localStorage.getItem('gemini_api_key');
+    console.log("Fetching API Key from localStorage:", key ? "Found" : "Not Found");
+    return key || "";
   }
   return "";
 };
@@ -13,7 +15,6 @@ export interface AiFeedback {
   suggestion: string;
 }
 
-// 기존 polishText 기능을 대체하거나 호환성을 위해 유지
 export const polishText = async (text: string) => {
   const feedback = await getSentenceFeedback(text);
   return feedback.suggestion;
@@ -21,25 +22,38 @@ export const polishText = async (text: string) => {
 
 export const getSentenceFeedback = async (text: string): Promise<AiFeedback> => {
   const apiKey = getApiKey();
-  if (!apiKey) throw new Error("API Key가 없습니다. 설정에서 등록해주세요.");
-  
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
-
-  const prompt = `당신은 작가의 글쓰기를 돕는 전문 편집자입니다. 
-  다음 문장을 분석하여 작가에게 영감을 주는 피드백을 제공해주세요. 
-  반드시 아래의 JSON 형식으로만 답변하세요.
-
-  {
-    "compliment": "문장에서 느껴지는 감정이나 표현 중 훌륭한 점 한 줄",
-    "improvement": "글의 흐름이나 단어 선택에서 아쉬운 점이나 깊이를 더할 수 있는 방향 한 줄",
-    "suggestion": "이 내용을 바탕으로 새롭게 제안하는 완성도 높은 문장"
+  if (!apiKey) {
+    throw new Error("Gemini API Key가 설정되지 않았습니다. 우측 상단 프로필 아이콘을 눌러 키를 저장해주세요.");
   }
+  
+  try {
+    const genAI = new GoogleGenerativeAI(apiKey);
+    // 가장 안정적인 gemini-1.5-flash 모델로 변경 (지원 범위가 더 넓음)
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-  입력된 문장: "${text}"`;
+    const prompt = `당신은 작가의 글쓰기를 돕는 전문 에세이 편집자입니다. 
+    사용자가 작성한 문장을 분석하여 따뜻하고 지적인 피드백을 제공해주세요. 
+    반드시 아래의 JSON 형식으로만 답변하세요. 마크다운 기호(예: \`\`\`json)를 포함하지 말고 순수 JSON 텍스트만 출력하세요.
 
-  const result = await model.generateContent(prompt);
-  const response = await result.response;
-  const cleanedText = response.text().replace(/```json|```/g, "").trim();
-  return JSON.parse(cleanedText);
+    {
+      "compliment": "문장에서 느껴지는 감정이나 표현 중 훌륭한 점 한 줄",
+      "improvement": "글의 흐름이나 단어 선택에서 아쉬운 점이나 깊이를 더할 수 있는 방향 한 줄",
+      "suggestion": "이 내용을 바탕으로 새롭게 제안하는 완성도 높은 문장"
+    }
+
+    입력된 문장: "${text}"`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const rawText = response.text();
+    
+    // JSON 파싱 전 정제 (마크다운 코드 블록 등이 포함될 경우 대비)
+    const cleanedText = rawText.replace(/```json|```/g, "").trim();
+    
+    console.log("Gemini Raw Response:", rawText);
+    return JSON.parse(cleanedText);
+  } catch (err: any) {
+    console.error("Gemini API Error:", err);
+    throw new Error(`AI 통신 오류: ${err.message || "알 수 없는 오류가 발생했습니다."}`);
+  }
 };
