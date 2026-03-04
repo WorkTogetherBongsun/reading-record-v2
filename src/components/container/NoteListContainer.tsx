@@ -2,20 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { 
-  ref, 
-  onValue, 
-  set, 
-  push, 
-  query, 
-  orderByChild, 
-  equalTo,
-  get,
-  update
-} from 'firebase/database';
+import { ref, onValue, set, push, query, orderByChild, equalTo } from 'firebase/database';
 import { Note, RecordItem } from '@/types/note';
 import NoteListPresentation from '../presentation/NoteListPresentation';
 import GlobalHeader from '../common/GlobalHeader';
+import { getSentenceFeedback, AiFeedback } from '@/lib/gemini';
 
 export default function NoteListContainer() {
   const [user] = useState<any>({ uid: 'default_user', displayName: '기록자' }); 
@@ -44,7 +35,6 @@ export default function NoteListContainer() {
       const data = snapshot.val();
       if (data) {
         const recordsList = Object.keys(data).map(key => ({ id: key, ...data[key] }));
-        // 타임라인은 최신순 정렬
         setRecentRecords(recordsList.sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
       } else {
         setRecentRecords([]);
@@ -53,22 +43,27 @@ export default function NoteListContainer() {
     return () => unsubscribe();
   }, [user, selectedDate]);
 
+  const handleAiFeedback = async (text: string): Promise<AiFeedback | null> => {
+    try {
+      return await getSentenceFeedback(text);
+    } catch (err) {
+      console.error(err);
+      return null;
+    }
+  };
+
   const handleQuickSubmit = async (data: { content: string, tags: string[], imageUrl?: string }) => {
     if (!user) return;
     const notePath = `notes/${user.uid}_${selectedDate}`;
     
-    // 1. 해당 날짜 노드가 있는지 먼저 확인 (기존 데이터 보호)
-    const noteSnap = await get(ref(db, notePath));
-    if (!noteSnap.exists()) {
-        await set(ref(db, notePath), {
-            title: `${selectedDate.split('-')[1]}월 ${selectedDate.split('-')[2]}일의 생각`,
-            createdAt: new Date().toISOString(),
-            id: selectedDate,
-            userId: user.uid
-        });
-    }
+    // 날짜 메인 노드 업데이트/생성
+    await set(ref(db, notePath), {
+      title: `${selectedDate.split('-')[1]}월 ${selectedDate.split('-')[2]}일의 생각`,
+      createdAt: new Date().toISOString(),
+      id: selectedDate,
+      userId: user.uid
+    });
 
-    // 2. 새로운 글(Record) 추가
     const recordsRef = ref(db, `${notePath}/records`);
     const newRecordRef = push(recordsRef);
     await set(newRecordRef, {
@@ -83,7 +78,7 @@ export default function NoteListContainer() {
   };
 
   return (
-    <main className="container-layout" style={{ paddingTop: '80px' }}>
+    <main className="container-layout">
       <GlobalHeader />
       <NoteListPresentation 
         notes={notes}
@@ -91,7 +86,15 @@ export default function NoteListContainer() {
         selectedDate={selectedDate}
         onDateChange={setSelectedDate}
         onQuickSubmit={handleQuickSubmit}
+        onGetAiFeedback={handleAiFeedback}
         userDisplayName={user.displayName}
+        todayId={new Date().toISOString().split('T')[0]}
+        onLogout={() => {}}
+        onToggleDebug={() => {}}
+        isDebug={false}
+        debugDate=""
+        onDebugDateChange={() => {}}
+        onStartRecord={() => {}}
       />
     </main>
   );
