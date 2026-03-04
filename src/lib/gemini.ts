@@ -8,10 +8,16 @@ const getApiKey = () => {
 };
 
 export interface AiFeedback {
-  compliment: string;   // 좋았던 점
-  improvement: string;  // 보완할 점
-  suggestion: string;   // 추천 문장
+  compliment: string;
+  improvement: string;
+  suggestion: string;
 }
+
+// 기존 polishText 기능을 대체하거나 호환성을 위해 유지
+export const polishText = async (text: string) => {
+  const feedback = await getSentenceFeedback(text);
+  return feedback.suggestion;
+};
 
 export const getSentenceFeedback = async (text: string): Promise<AiFeedback> => {
   const apiKey = getApiKey();
