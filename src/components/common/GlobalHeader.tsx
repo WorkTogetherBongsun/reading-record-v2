@@ -25,7 +25,7 @@ export default function GlobalHeader() {
   return (
     <>
       <nav className="nav-bar">
-        <div style={{ fontWeight: 'bold', fontSize: '1.1rem', letterSpacing: '-0.5px' }}>Night Reading</div>
+        <div style={{ fontWeight: 'bold', fontSize: '1.1rem', letterSpacing: '-0.5px' }}>Book Maker</div>
         <div className="nav-links">
           <Link href="/" className={pathname === '/' ? 'active' : ''}>홈</Link>
           <Link href="/write" className={pathname === '/write' ? 'active' : ''}>책 쓰기</Link>
